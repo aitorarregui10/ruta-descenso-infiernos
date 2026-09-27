@@ -263,4 +263,3 @@ function publico(e) {
   };
 }
 
-export const config = { path: "/api" };
