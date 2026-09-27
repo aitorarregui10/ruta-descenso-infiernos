@@ -3,7 +3,7 @@
    ========================================================================= */
 "use strict";
 
-const API = "/api";
+const API = "/.netlify/functions/api";
 const EMOJIS = ["😈","👹","🔥","🦇","💀","🍷","👻","🕷️","🌙","⭐","😇","👼","🎭","🃏","🐍","🖤","💋","🥂","⚡","🦂","🌹","🗝️","🕯️","🐈‍⬛"];
 const VOTOS = ["😇","🙂","😐","😏","😈"]; // del cielo al infierno
 const CUMPLE_NOMBRE = "Maribel";
