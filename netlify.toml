@@ -1,0 +1,11 @@
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+
+# La función usa el enrutado por "config.path" (/api) definido en api.js,
+# pero dejamos también un redirect explícito por compatibilidad.
+[[redirects]]
+  from = "/api"
+  to = "/.netlify/functions/api"
+  status = 200
+  force = true

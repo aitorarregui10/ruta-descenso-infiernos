@@ -1,0 +1,254 @@
+/* =========================================================================
+   Ruta Descenso a los Infiernos — estilos
+   Paleta que desciende del cielo dorado al infierno de lava.
+   ========================================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,500&display=swap');
+
+:root {
+  --cielo-1: #bcd8f0;
+  --cielo-2: #7fa8cf;
+  --oro: #e9c46a;
+  --oro-vivo: #f4d67a;
+  --tierra: #6b5540;
+  --brasa: #d1440f;
+  --fuego: #f0620c;
+  --fuego-claro: #ff8a3d;
+  --lava: #8a1207;
+  --negro-humo: #140b0a;
+  --hueso: #f3ead6;
+  --texto-claro: #f7efe0;
+  --sombra: rgba(0,0,0,.45);
+
+  --grad-fondo: linear-gradient(180deg, #1a2740, #14243c);
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+*, *::before, *::after { box-sizing: border-box; }
+
+html { scroll-padding-top: env(safe-area-inset-top, 0px); -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  min-height: 100dvh;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  color: var(--texto-claro);
+  background: var(--grad-fondo);
+  transition: background 1.2s ease;
+  overflow-x: hidden;
+  line-height: 1.5;
+}
+
+/* Fondos por nivel de profundidad (0=cielo … 8=infierno) */
+body[data-prof="cielo"]   { background: linear-gradient(180deg,#cfe4f7 0%,#9dc0e2 45%,#e9c46a 100%); }
+body[data-prof="0"] { background: linear-gradient(180deg,#cfe4f7,#9dc0e2 55%,#e6c27a); }
+body[data-prof="1"] { background: linear-gradient(180deg,#a9c3dd,#c9a86a 60%,#b98b4e); }
+body[data-prof="2"] { background: linear-gradient(180deg,#9c8f7d,#7d6547 60%,#5c4630); }
+body[data-prof="3"] { background: linear-gradient(180deg,#6f5842,#8a5a34 60%,#7a3f20); }
+body[data-prof="4"] { background: linear-gradient(180deg,#5c3d2b,#9a3f15 55%,#7a2510); }
+body[data-prof="5"] { background: linear-gradient(180deg,#4a2318,#b8390d 55%,#7c1c08); }
+body[data-prof="6"] { background: linear-gradient(180deg,#3a160f,#d1440f 50%,#6e1305); }
+body[data-prof="7"] { background: linear-gradient(180deg,#2a0d09,#e0510c 45%,#5c0f04); }
+body[data-prof="8"] { background: linear-gradient(180deg,#1a0705,#8a1207 40%,#000); }
+body[data-prof="final"] { background: linear-gradient(180deg,#1a0705,#8a1207 40%,#000); }
+
+.wrap {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: clamp(16px, 4vw, 28px) clamp(14px, 4vw, 22px) 120px;
+  position: relative;
+  z-index: 2;
+}
+
+/* ---- Tipografía de títulos ---- */
+h1, h2, h3 { font-family: 'Cinzel', serif; line-height: 1.1; margin: 0 0 .4em; }
+.display {
+  font-family: 'Cinzel', serif;
+  font-weight: 900;
+  letter-spacing: .01em;
+  text-shadow: 0 2px 10px var(--sombra);
+}
+
+/* ---- Capa de fuego (solo en profundidad alta) ---- */
+.fuego {
+  position: fixed; left: 0; right: 0; bottom: 0; height: 42vh;
+  pointer-events: none; z-index: 1; opacity: 0; transition: opacity 1.2s ease;
+  background:
+    radial-gradient(60% 80% at 20% 100%, rgba(255,120,30,.55), transparent 70%),
+    radial-gradient(55% 75% at 55% 100%, rgba(255,60,10,.6), transparent 70%),
+    radial-gradient(60% 85% at 85% 100%, rgba(255,150,40,.5), transparent 70%);
+  mix-blend-mode: screen;
+}
+body[data-fuego="1"] .fuego { opacity: 1; animation: llama 3.5s ease-in-out infinite alternate; }
+@keyframes llama {
+  from { transform: translateY(6px) scaleY(1); filter: brightness(.95); }
+  to   { transform: translateY(-4px) scaleY(1.08); filter: brightness(1.15); }
+}
+@media (prefers-reduced-motion: reduce) {
+  body[data-fuego="1"] .fuego { animation: none; }
+  * { scroll-behavior: auto !important; }
+}
+
+/* ===== Tarjetas / paneles ===== */
+.panel {
+  background: rgba(20, 12, 10, .38);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 225, 170, .28);
+  border-radius: 14px;
+  padding: clamp(16px, 4vw, 24px);
+  box-shadow: 0 10px 30px var(--sombra);
+}
+.panel + .panel { margin-top: 18px; }
+
+/* ===== Botones ===== */
+button, .btn {
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  font-size: 1rem;
+  border: none;
+  border-radius: 10px;
+  padding: 14px 20px;
+  cursor: pointer;
+  color: #2a1500;
+  background: linear-gradient(180deg, var(--oro-vivo), var(--oro));
+  box-shadow: 0 4px 0 #a9832f, 0 8px 18px var(--sombra);
+  transition: transform .08s ease, box-shadow .08s ease, filter .2s;
+  -webkit-tap-highlight-color: transparent;
+}
+button:active, .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #a9832f, 0 4px 10px var(--sombra); }
+button:disabled { filter: grayscale(.6) brightness(.8); cursor: not-allowed; box-shadow: none; opacity: .7; }
+button.infernal { background: linear-gradient(180deg, var(--fuego-claro), var(--brasa)); color: #fff2e6; box-shadow: 0 4px 0 #7c1c08, 0 8px 18px var(--sombra); }
+button.infernal:active { box-shadow: 0 1px 0 #7c1c08, 0 4px 10px var(--sombra); }
+button.ghost { background: transparent; color: var(--texto-claro); border: 1px solid rgba(255,225,170,.4); box-shadow: none; font-size: .82rem; padding: 9px 14px; font-weight:500; }
+.btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.full { width: 100%; }
+
+:focus-visible { outline: 3px solid #ffe08a; outline-offset: 2px; }
+
+/* ===== Inputs ===== */
+input[type="text"], textarea {
+  width: 100%;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.1rem;
+  color: var(--texto-claro);
+  background: rgba(0,0,0,.28);
+  border: 1px solid rgba(255,225,170,.35);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+input::placeholder, textarea::placeholder { color: rgba(247,239,224,.5); }
+textarea { resize: vertical; min-height: 60px; }
+
+/* ===== Portada ===== */
+.portada-img {
+  width: 100%; border-radius: 14px; display: block;
+  box-shadow: 0 14px 40px rgba(0,0,0,.6);
+  border: 1px solid rgba(255,225,170,.3);
+}
+.sub { font-size: 1.15rem; opacity: .92; font-style: italic; }
+
+/* ===== Selector de emoji ===== */
+.emoji-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin: 4px 0 6px; }
+.emoji-grid button {
+  font-size: 1.5rem; padding: 8px 0; background: rgba(0,0,0,.25);
+  border: 1px solid transparent; box-shadow: none; color: inherit; border-radius: 10px;
+}
+.emoji-grid button.sel { border-color: var(--oro-vivo); background: rgba(233,196,106,.22); transform: scale(1.05); }
+.emoji-grid button:active { transform: scale(.96); }
+
+.campo { margin: 14px 0; }
+.campo > label { display:block; font-family:'Cinzel',serif; font-size:.78rem; letter-spacing:.06em; margin-bottom:7px; opacity:.85; }
+
+.choice-row { display: flex; gap: 10px; }
+.choice-row button { flex: 1; background: rgba(0,0,0,.25); color: inherit; box-shadow: none; border: 1px solid rgba(255,225,170,.35); }
+.choice-row button.sel { background: linear-gradient(180deg, var(--oro-vivo), var(--oro)); color: #2a1500; }
+
+/* ===== Lista de jugadores (sala de espera) ===== */
+.jug-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.jug-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(0,0,0,.3); border: 1px solid rgba(255,225,170,.28);
+  border-radius: 999px; padding: 6px 12px 6px 8px; font-size: 1rem;
+}
+.jug-chip .em { font-size: 1.2rem; }
+.jug-chip.ok { border-color: #8fdf9a; box-shadow: 0 0 0 1px rgba(143,223,154,.4) inset; }
+.jug-chip.cumple { border-color: var(--oro-vivo); background: rgba(233,196,106,.18); }
+.jug-chip.fuera { opacity: .4; text-decoration: line-through; }
+.tick { color: #8fdf9a; font-weight: 700; }
+.reloj { opacity:.6; }
+
+/* ===== Parada ===== */
+.eyebrow-nivel {
+  font-family:'Cinzel',serif; font-weight:700; letter-spacing:.08em;
+  font-size: .82rem; opacity:.9; display:flex; align-items:center; gap:8px;
+}
+.parada-titulo { font-size: clamp(1.7rem, 6vw, 2.4rem); margin:.15em 0 .1em; }
+.meta-parada { font-size:.98rem; opacity:.85; margin-bottom: 14px; display:flex; gap:14px; flex-wrap:wrap; }
+.meta-parada span { display:inline-flex; align-items:center; gap:5px; }
+
+.parada-img { width:100%; border-radius:12px; display:block; margin: 4px 0 16px; box-shadow: 0 10px 30px var(--sombra); border:1px solid rgba(255,225,170,.25); }
+
+.relato { font-size: 1.16rem; line-height: 1.6; }
+.relato::first-letter { font-family:'Cinzel',serif; font-size: 2.4em; float: left; line-height:.8; padding: 6px 10px 0 0; color: var(--oro-vivo); }
+body[data-fuego="1"] .relato::first-letter { color: var(--fuego-claro); }
+
+.bloque-lugar {
+  margin-top: 16px; padding: 14px 16px; border-left: 3px solid var(--oro);
+  background: rgba(0,0,0,.22); border-radius: 0 10px 10px 0; font-size: 1.02rem;
+}
+body[data-fuego="1"] .bloque-lugar { border-left-color: var(--fuego); }
+.bloque-lugar h4 { font-family:'Cinzel',serif; font-size:.8rem; letter-spacing:.05em; margin:0 0 6px; opacity:.85; }
+.brindis { margin-top: 14px; font-style: italic; font-size: 1.08rem; opacity:.95; }
+
+.maps-btn { text-decoration:none; display:inline-flex; align-items:center; gap:8px; margin-top: 16px; }
+.maps-alt { margin-left: 8px; }
+
+/* ===== Votación emoji 😇→😈 ===== */
+.voto-grid { display:flex; justify-content:space-between; gap:6px; margin:10px 0; }
+.voto-grid button { flex:1; font-size:1.7rem; padding:10px 0; background:rgba(0,0,0,.25); box-shadow:none; border:1px solid transparent; border-radius:12px; }
+.voto-grid button.sel { border-color: var(--oro-vivo); background: rgba(233,196,106,.2); transform: scale(1.08); }
+
+/* ===== Espera ===== */
+.espera-box { text-align:center; }
+.espera-box .big { font-size: 3rem; margin:.2em 0; }
+.spinner { width: 34px; height:34px; margin: 14px auto; border:3px solid rgba(255,255,255,.25); border-top-color: var(--oro-vivo); border-radius:50%; animation: giro .9s linear infinite; }
+@keyframes giro { to { transform: rotate(360deg); } }
+
+/* ===== Chat de comentarios ===== */
+.chat { margin-top: 14px; }
+.chat-scroll { max-height: 46vh; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-right: 4px; }
+.msg { padding: 9px 12px; margin-bottom: 8px; background: rgba(0,0,0,.26); border-radius: 12px; border:1px solid rgba(255,225,170,.16); }
+.msg .autor { font-family:'Cinzel',serif; font-size:.82rem; font-weight:700; }
+.msg .autor .em { font-size:1rem; }
+.msg.decumple .autor { color: var(--oro-vivo); }
+.msg .voto-emoji { float:right; font-size:1.2rem; }
+.msg .txt { font-size:1.08rem; margin-top:2px; }
+.msg .parada-tag { font-size:.72rem; opacity:.55; font-family:'Cinzel',serif; }
+.chat-input { display:flex; gap:8px; margin-top:10px; }
+.chat-input input { flex:1; }
+.chat-input button { padding: 12px 16px; }
+
+/* ===== Barra de progreso inferior ===== */
+.progress[hidden] { display: none; }
+.progress {
+  position: fixed; left:0; right:0; bottom:0; z-index: 5;
+  background: rgba(10,6,5,.86); backdrop-filter: blur(8px);
+  border-top: 1px solid rgba(255,225,170,.2);
+  padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px));
+  display:flex; align-items:center; gap:10px; font-size:.8rem;
+}
+.progress .barra { flex:1; height:8px; background: rgba(255,255,255,.12); border-radius:999px; overflow:hidden; }
+.progress .relleno { height:100%; background: linear-gradient(90deg, var(--oro), var(--fuego), var(--lava)); transition: width .6s ease; }
+.progress .lbl { font-family:'Cinzel',serif; white-space:nowrap; }
+
+/* ===== Final ===== */
+.final-hero { text-align:center; }
+.final-hero .display { font-size: clamp(2rem, 9vw, 3.2rem); color: var(--fuego-claro); }
+.medalla { font-size: 4rem; margin:.1em 0; }
+
+.hint { font-size:.9rem; opacity:.7; margin-top:10px; }
+.center { text-align:center; }
+.mini { font-size:.8rem; opacity:.6; }
+hr.sep { border:none; border-top:1px solid rgba(255,225,170,.2); margin: 18px 0; }
+.aviso { font-size:.86rem; background: rgba(0,0,0,.3); border:1px dashed rgba(255,225,170,.35); padding:10px 12px; border-radius:10px; }
