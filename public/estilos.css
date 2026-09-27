@@ -201,8 +201,13 @@ body[data-fuego="1"] .bloque-lugar { border-left-color: var(--fuego); }
 .bloque-lugar h4 { font-family:'Cinzel',serif; font-size:.8rem; letter-spacing:.05em; margin:0 0 6px; opacity:.85; }
 .brindis { margin-top: 14px; font-style: italic; font-size: 1.08rem; opacity:.95; }
 
-.maps-btn { text-decoration:none; display:inline-flex; align-items:center; gap:8px; margin-top: 16px; }
-.maps-alt { margin-left: 8px; }
+.maps-acciones { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.maps-acciones .btn { flex: 1 1 100%; text-align: center; justify-content: center; white-space: normal; word-break: break-word; }
+@media (min-width: 460px) {
+  .maps-acciones .btn { flex: 1 1 auto; }
+}
+.maps-btn { text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:8px; }
+.maps-alt { }
 
 /* ===== Votación emoji 😇→😈 ===== */
 .voto-grid { display:flex; justify-content:space-between; gap:6px; margin:10px 0; }
@@ -252,3 +257,96 @@ body[data-fuego="1"] .bloque-lugar { border-left-color: var(--fuego); }
 .mini { font-size:.8rem; opacity:.6; }
 hr.sep { border:none; border-top:1px solid rgba(255,225,170,.2); margin: 18px 0; }
 .aviso { font-size:.86rem; background: rgba(0,0,0,.3); border:1px dashed rgba(255,225,170,.35); padding:10px 12px; border-radius:10px; }
+
+/* =========================================================================
+   ANIMACIONES
+   ========================================================================= */
+
+/* ---- 1) Puertas del cielo ---- */
+.puertas-overlay {
+  position: fixed; inset: 0; z-index: 50; overflow: hidden;
+  pointer-events: none;
+}
+.puertas-overlay.go { animation: puertas-fade 1s ease 1.6s forwards; }
+@keyframes puertas-fade { to { opacity: 0; } }
+.puertas-luz {
+  position: absolute; inset: 0;
+  background: radial-gradient(circle at 50% 45%, #fff6d8 0%, #ffe8a8 18%, rgba(255,220,150,.4) 40%, transparent 70%);
+  opacity: 0; transition: opacity 1.2s ease;
+}
+.puertas-overlay.go .puertas-luz { opacity: 1; }
+.puerta-hoja {
+  position: absolute; top: 0; bottom: 0; width: 50%;
+  background:
+    repeating-linear-gradient(180deg, #d9a94a 0 22px, #c9993d 22px 44px),
+    linear-gradient(90deg, #a9832f, #e9c46a);
+  border: 3px solid #8a6a26; box-shadow: 0 0 40px rgba(0,0,0,.5) inset;
+  transition: transform 1.5s cubic-bezier(.7,0,.3,1);
+}
+.puerta-hoja.izq { left: 0; border-right: 4px solid #6f5320; transform: translateX(0); }
+.puerta-hoja.der { right: 0; border-left: 4px solid #6f5320; transform: translateX(0); }
+.puertas-overlay.go .puerta-hoja.izq { transform: translateX(-100%); }
+.puertas-overlay.go .puerta-hoja.der { transform: translateX(100%); }
+.puertas-texto {
+  position: absolute; left: 0; right: 0; top: 46%; text-align: center;
+  font-family: 'Cinzel', serif; font-weight: 700; font-size: 1.2rem; color: #3a2a06;
+  text-shadow: 0 1px 2px rgba(255,240,200,.6); opacity: 0;
+}
+.puertas-overlay.go .puertas-texto { animation: puertas-texto 1.4s ease forwards; }
+@keyframes puertas-texto { 0%{opacity:0} 25%{opacity:1} 70%{opacity:1} 100%{opacity:0} }
+
+/* ---- 2) Transformación en Demonio ---- */
+.trans-foto { position: relative; margin: 4px 0 16px; }
+.trans-foto img { display: block; transition: filter .9s ease; }
+.trans-foto .trans-demonio { position: absolute; inset: 0; opacity: 0; transition: opacity .5s ease; }
+.trans-foto .trans-llama {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 0;
+  background: linear-gradient(0deg, #ff6a00, #ffb300 60%, transparent);
+  filter: blur(6px); opacity: .85; transition: height .8s ease;
+}
+.trans-foto .trans-flash {
+  position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none;
+}
+/* fases */
+.trans-foto.fase-tension #imgTemplo { filter: saturate(2.2) hue-rotate(-25deg) brightness(.85) contrast(1.2); }
+.trans-foto.fase-tension { animation: trans-shake .35s linear infinite; }
+@keyframes trans-shake {
+  0%,100%{ transform: translate(0,0) }
+  20%{ transform: translate(-3px,1px) } 40%{ transform: translate(3px,-1px) }
+  60%{ transform: translate(-2px,2px) } 80%{ transform: translate(2px,-2px) }
+}
+.trans-foto.fase-fuego .trans-llama { height: 70%; }
+.trans-foto.fase-flash .trans-flash { animation: trans-flash .6s ease forwards; }
+@keyframes trans-flash { 0%{opacity:0} 30%{opacity:1} 100%{opacity:0} }
+.trans-foto.fase-flash .trans-demonio { opacity: 1; }
+.trans-foto.fase-flash { animation: none; }
+/* la imagen final del demonio entra con un leve zoom */
+.trans-entra { animation: trans-entra .8s ease; }
+@keyframes trans-entra { from{ opacity:0; transform: scale(1.06) } to{ opacity:1; transform: scale(1) } }
+
+/* ---- 3a) Brasas subiendo ---- */
+.brasas {
+  position: fixed; inset: 0; z-index: 1; pointer-events: none;
+  opacity: 0; transition: opacity 1s ease; overflow: hidden;
+}
+.brasa {
+  position: absolute; bottom: -10px; border-radius: 50%;
+  background: radial-gradient(circle, #ffd27a, #ff6a00 60%, transparent 70%);
+  box-shadow: 0 0 6px #ff8a3d;
+  animation-name: brasa-sube; animation-timing-function: ease-in; animation-iteration-count: infinite;
+}
+@keyframes brasa-sube {
+  0%   { transform: translateY(0) translateX(0); opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: .8; }
+  100% { transform: translateY(-100vh) translateX(20px); opacity: 0; }
+}
+
+/* ---- 3b) Fundido de entrada de los títulos de parada ---- */
+.parada-titulo { animation: titulo-entra .7s ease both; }
+@keyframes titulo-entra { from{ opacity:0; transform: translateY(10px) } to{ opacity:1; transform: translateY(0) } }
+
+@media (prefers-reduced-motion: reduce) {
+  .puerta-hoja, .puertas-overlay, .trans-foto, .trans-foto *,
+  .brasa, .parada-titulo, .trans-entra { animation: none !important; transition: none !important; }
+}

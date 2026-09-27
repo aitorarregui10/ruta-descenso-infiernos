@@ -19,6 +19,7 @@ let estado = null;      // último estado del servidor
 let pollTimer = null;
 let seleccion = { emoji: null, cumple: null };
 let votoParada = {};    // parada -> emoji elegido (local, antes de enviar)
+let forzarFinal = false; // válvula: ver el final aunque el grupo no haya acabado
 let ultimaFaseVista = null;
 let transicionMostrada = {}; // control de animaciones ya vistas
 
@@ -34,12 +35,55 @@ async function api(action, body) {
   return r.json();
 }
 
+let ultimaFirma = null; // firma del estado visible; evita re-render innecesario
+
+// Firma de lo que se ve en pantalla. Si no cambia, no hace falta re-render.
+function firmaEstado() {
+  if (!estado) return "";
+  const j = yoJugador();
+  const jugSig = estado.jugadores
+    .map((x) => x.id + ":" + x.parada + ":" + (x.listo ? 1 : 0) + ":" + (x.activo ? 1 : 0) + ":" + (x.cumple ? 1 : 0))
+    .join("|");
+  return [
+    estado.fase,
+    j ? j.parada : "-",
+    jugSig,
+    (estado.comentarios || []).length, // los comentarios se pintan aparte, pero cuentan para saber si algo cambió
+  ].join("#");
+}
+
+// ¿El usuario está escribiendo ahora mismo en un campo?
+function escribiendo() {
+  const a = document.activeElement;
+  return a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA");
+}
+
 async function refrescar() {
   try {
     const r = await api("state");
-    if (r.ok) { estado = r.estado; render(); }
+    if (!r.ok) return;
+    estado = r.estado;
+    const firma = firmaEstado();
+
+    // Primera vez o cambio estructural -> re-render completo,
+    // pero NUNCA mientras el usuario escribe (perdería texto y foco).
+    if (firma !== ultimaFirma) {
+      if (escribiendo()) {
+        // Algo cambió pero estás escribiendo: solo refresca el chat, no toques el resto.
+        pintarMensajes();
+        return;
+      }
+      ultimaFirma = firma;
+      render();
+    } else {
+      // Nada estructural cambió: solo actualiza el chat (mensajes nuevos) sin re-render.
+      pintarMensajes();
+    }
   } catch (e) { /* silencioso: reintenta en el siguiente poll */ }
 }
+
+// Fuerza un re-render en la próxima llamada (tras una acción propia)
+function invalidarFirma() { ultimaFirma = null; }
 
 function iniciarPoll() {
   if (pollTimer) return;
@@ -55,17 +99,45 @@ const soyCumple = () => { const j = yoJugador(); return j ? j.cumple : false; };
 function aplicarAmbiente() {
   const b = document.body;
   if (!estado || estado.fase === "registro" || estado.fase === "listos") {
-    b.dataset.prof = "cielo"; b.dataset.fuego = "0"; return;
+    b.dataset.prof = "cielo"; b.dataset.fuego = "0"; sincronizarBrasas(); return;
   }
-  if (estado.fase === "final") { b.dataset.prof = "final"; b.dataset.fuego = "1"; return; }
+  if (estado.fase === "final") { b.dataset.prof = "final"; b.dataset.fuego = "1"; sincronizarBrasas(); return; }
   const p = Math.min(miParada(), 8);
   b.dataset.prof = String(p - 1 <= 0 ? 0 : p - 1); // parada1 -> prof0 (cielo)
   b.dataset.fuego = p >= 5 ? "1" : "0";
+  sincronizarBrasas();
+}
+
+// Muestra las brasas subiendo solo cuando hay fuego (paradas infernales / final)
+let brasasCreadas = false;
+function sincronizarBrasas() {
+  const cont = document.getElementById("brasas");
+  if (!cont) return;
+  const hayFuego = document.body.dataset.fuego === "1" && !prefiereMenosMovimiento();
+  if (hayFuego && !brasasCreadas) {
+    // crea 14 ascuas con posiciones/tiempos variados
+    let html = "";
+    for (let i = 0; i < 14; i++) {
+      const izq = Math.round(Math.random() * 100);
+      const dur = (5 + Math.random() * 5).toFixed(1);
+      const del = (Math.random() * 6).toFixed(1);
+      const tam = (3 + Math.random() * 5).toFixed(0);
+      html += `<span class="brasa" style="left:${izq}%;width:${tam}px;height:${tam}px;animation-duration:${dur}s;animation-delay:${del}s"></span>`;
+    }
+    cont.innerHTML = html;
+    brasasCreadas = true;
+  }
+  cont.style.opacity = hayFuego ? "1" : "0";
 }
 
 // Cómo nos referimos a Maribel según el punto de la ruta del que hablamos
 function nombreMaribel(personaTipo) {
   return personaTipo === "demonio" ? "Demonio Pelirrojo" : CUMPLE_NOMBRE;
+}
+
+// Respeta la preferencia del sistema de reducir animaciones
+function prefiereMenosMovimiento() {
+  return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
 // ============================ RENDER PRINCIPAL ============================
@@ -74,6 +146,7 @@ function render() {
   const prog = document.getElementById("progress");
 
   if (!estado) return;
+  ultimaFirma = firmaEstado(); // sincroniza la firma con lo que vamos a pintar
 
   if (estado.fase === "registro" || estado.fase === "listos") {
     prog.hidden = true;
@@ -86,6 +159,8 @@ function render() {
     if (!yoJugador()) return renderRegistro(true);
     prog.hidden = false;
     actualizarProgreso();
+    // Válvula: si pedí ver el final y ya cerré mi descenso, muéstralo
+    if (forzarFinal && miParada() > (estado.total || 8)) return renderFinal();
     return renderJuego();
   }
 
@@ -213,12 +288,12 @@ function renderSala() {
 
   if ($("#btnListos")) $("#btnListos").addEventListener("click", async () => {
     await api("listo", { id: store.id, abrir: true });
-    refrescar();
+    invalidarFirma(); refrescar();
   });
   if ($("#btnConfirmar")) $("#btnConfirmar").addEventListener("click", async (ev) => {
     ev.target.disabled = true;
     await api("listo", { id: store.id });
-    refrescar();
+    invalidarFirma(); refrescar();
   });
 
   // Cuando arranca, mostrar la foto del tren una vez
@@ -260,7 +335,25 @@ function renderArranque() {
       <button class="full" id="btnEmpezar" style="margin-top:12px">Subir al Cielo ☁️</button>
     </div>
   `;
-  $("#btnEmpezar").addEventListener("click", render);
+  $("#btnEmpezar").addEventListener("click", () => animarPuertas(render));
+}
+
+// Animación: dos hojas de puerta dorada que se abren con resplandor detrás.
+function animarPuertas(despues) {
+  if (prefiereMenosMovimiento()) { despues(); return; }
+  const cap = document.createElement("div");
+  cap.className = "puertas-overlay";
+  cap.innerHTML = `
+    <div class="puertas-luz"></div>
+    <div class="puerta-hoja izq"></div>
+    <div class="puerta-hoja der"></div>
+    <div class="puertas-texto">Se abren las puertas del Cielo…</div>
+  `;
+  document.body.appendChild(cap);
+  // forzar reflow y lanzar
+  requestAnimationFrame(() => cap.classList.add("go"));
+  setTimeout(() => { despues(); }, 1500);      // renderiza la parada por debajo
+  setTimeout(() => { cap.remove(); }, 2600);   // retira el overlay tras el fundido
 }
 
 function renderParada(data) {
@@ -293,8 +386,10 @@ function renderParada(data) {
 
       <p class="brindis">🥂 ${escapeHtml(data.brindis)}</p>
 
-      <a class="btn maps-btn ${esInfernal ? "infernal" : ""}" href="${data.maps}" target="_blank" rel="noopener">📍 Abrir en Maps</a>
-      ${data.mapsAlt ? `<a class="btn ghost maps-alt" href="${data.mapsAlt}" target="_blank" rel="noopener">Plan B: Sala El Sol</a>` : ""}
+      <div class="maps-acciones">
+        <a class="btn maps-btn ${esInfernal ? "infernal" : ""}" href="${data.maps}" target="_blank" rel="noopener">📍 Abrir en Maps</a>
+        ${data.mapsAlt ? `<a class="btn ghost maps-alt" href="${data.mapsAlt}" target="_blank" rel="noopener">Plan B: Sala El Sol</a>` : ""}
+      </div>
     </div>
 
     <div class="panel">
@@ -337,24 +432,60 @@ function renderTransformacion(data) {
       <div class="eyebrow-nivel center" style="justify-content:center">🕳️ En el umbral del Bar Maná</div>
       <h2 class="display" style="font-size:1.5rem">La transformación</h2>
       <div id="transFase1">
-        <img class="parada-img" src="images/templo.jpg" alt="Maribel" style="filter:saturate(1)" />
-        <p class="relato">Maribel se detiene en la puerta. Algo cruje. El festín ha terminado y el mundo de los vivos queda atrás…</p>
+        <div class="trans-foto" id="transFoto">
+          <img class="parada-img" src="images/templo.jpg" alt="Maribel" id="imgTemplo" />
+          <img class="parada-img trans-demonio" src="images/demonio.jpg" alt="El Demonio Pelirrojo" id="imgDemonio" />
+          <div class="trans-llama" id="transLlama"></div>
+          <div class="trans-flash" id="transFlash"></div>
+        </div>
+        <p class="relato" id="transTexto">Maribel se detiene en la puerta. Algo cruje. El festín ha terminado y el mundo de los vivos queda atrás…</p>
         <button class="full infernal" id="btnTrans">Cruzar el umbral 🔥</button>
       </div>
     </div>
   `;
-  $("#btnTrans").addEventListener("click", () => {
-    const w = $("#transWrap");
-    w.innerHTML = `
-      <div class="eyebrow-nivel center" style="justify-content:center">🔥 Parada 5 · El primer descenso</div>
-      <h2 class="display" style="font-size:1.6rem;color:var(--fuego-claro)">Nace el Demonio Pelirrojo</h2>
-      <img class="parada-img" src="images/demonio.jpg" alt="El Demonio Pelirrojo" />
-      <p class="relato">La cumpleañera que subió al cielo ya no existe. Entre la lava y el humo, arde ahora el <b>Demonio Pelirrojo</b>, que os guiará hasta el fondo. A partir de aquí, ese es su nombre.</p>
-      <button class="full infernal" id="btnSeguirTrans">Entrar en el Bar Maná ⬇️</button>
-    `;
+  $("#btnTrans").addEventListener("click", () => reproducirTransformacion());
+}
+
+function reproducirTransformacion() {
+  const btn = $("#btnTrans");
+  if (btn) btn.remove();
+  const foto = $("#transFoto");
+  const texto = $("#transTexto");
+
+  // Camino corto si el usuario pide menos movimiento: cambio directo
+  if (prefiereMenosMovimiento()) {
+    mostrarDemonioFinal();
+    return;
+  }
+
+  // Fase 1: la foto del templo se tiñe de rojo y tiembla
+  foto.classList.add("fase-tension");
+  if (texto) texto.textContent = "La piel arde, el pelo se enciende, la tierra se abre bajo sus pies…";
+
+  // Fase 2 (a los 1.1s): sube la llamarada
+  setTimeout(() => { foto.classList.add("fase-fuego"); }, 1100);
+
+  // Fase 3 (a los 1.9s): fogonazo blanco y revelado del demonio
+  setTimeout(() => {
+    foto.classList.add("fase-flash");
     document.body.dataset.fuego = "1"; document.body.dataset.prof = "5";
-    $("#btnSeguirTrans").addEventListener("click", render);
-  });
+  }, 1900);
+
+  // Fase 4 (a los 2.5s): asienta el estado final
+  setTimeout(() => { mostrarDemonioFinal(); }, 2500);
+}
+
+function mostrarDemonioFinal() {
+  document.body.dataset.fuego = "1"; document.body.dataset.prof = "5";
+  const w = $("#transWrap");
+  w.innerHTML = `
+    <div class="eyebrow-nivel center" style="justify-content:center">🔥 Parada 5 · El primer descenso</div>
+    <h2 class="display" style="font-size:1.6rem;color:var(--fuego-claro)">Nace el Demonio Pelirrojo</h2>
+    <img class="parada-img trans-entra" src="images/demonio.jpg" alt="El Demonio Pelirrojo" />
+    <p class="relato">La cumpleañera que subió al cielo ya no existe. Entre la lava y el humo, arde ahora el <b>Demonio Pelirrojo</b>, que os guiará hasta el fondo. A partir de aquí, ese es su nombre.</p>
+    <button class="full infernal" id="btnSeguirTrans">Entrar en el Bar Maná ⬇️</button>
+  `;
+  $("#btnSeguirTrans").addEventListener("click", render);
 }
 
 async function cerrarParada(data) {
@@ -377,12 +508,14 @@ function renderEsperaFinal() {
       <div class="spinner"></div>
       <p class="relato">Ya has cerrado tu descenso. Cuando todos lleguen al fondo, se revelará el final.</p>
       ${faltan.length ? `<p class="hint">Aún bajando: ${faltan.map((j)=>escapeHtml(j.emoji+" "+j.nombre)).join(", ")}</p>` : ""}
+      <button class="ghost" id="btnVerFinal" style="margin-top:14px">Ver el final igualmente →</button>
     </div>
     ${renderChat({ n: 99, persona: "demonio" })}
     <div class="panel center" style="margin-top:16px">
       <button class="ghost" id="btnAbandonar">Me voy ya — abandonar la ruta</button>
     </div>
   `;
+  $("#btnVerFinal").addEventListener("click", () => { forzarFinal = true; render(); });
   $("#btnAbandonar").addEventListener("click", abandonar);
   montarChat({ n: 99 });
 }
@@ -420,14 +553,18 @@ function montarChat(data) {
 function pintarMensajes() {
   const cont = $("#chatScroll"); if (!cont || !estado) return;
   const msgs = estado.comentarios || [];
-  cont.innerHTML = msgs.map((m) => `
+  // ¿estaba el usuario mirando el fondo del chat?
+  const cercaDelFondo = cont.scrollHeight - cont.scrollTop - cont.clientHeight < 60;
+  const nuevoHTML = msgs.map((m) => `
     <div class="msg ${m.cumple ? "decumple" : ""}">
       ${m.emojiVoto ? `<span class="voto-emoji">${m.emojiVoto}</span>` : ""}
       <div class="autor"><span class="em">${m.autorEmoji || ""}</span> ${escapeHtml(m.autorNombre || "?")} dice:</div>
       <div class="txt">${escapeHtml(m.texto || "")}</div>
       <div class="parada-tag">Parada ${m.parada || "?"}</div>
     </div>`).join("") || `<p class="mini center">Aún no hay mensajes. Sé el primero.</p>`;
-  cont.scrollTop = cont.scrollHeight;
+  // Solo reescribe si cambió, para no parpadear
+  if (cont.innerHTML !== nuevoHTML) cont.innerHTML = nuevoHTML;
+  if (cercaDelFondo) cont.scrollTop = cont.scrollHeight;
 }
 
 // ============================ 5) FINAL ============================
@@ -498,8 +635,60 @@ function escapeHtml(s) {
     .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
+// ============================ PANTALLA DE RESET (oculta) ============================
+// Se activa solo si la URL lleva ?reset o #reset. No aparece nunca en el flujo normal.
+function esRutaReset() {
+  return /(\?|&)reset\b/.test(location.search) || location.hash.replace("#", "") === "reset";
+}
+
+function renderReset() {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; } // no refrescar aquí
+  document.body.dataset.prof = "cielo"; document.body.dataset.fuego = "0";
+  const prog = document.getElementById("progress"); if (prog) prog.hidden = true;
+  app().innerHTML = `
+    <div class="panel">
+      <div class="eyebrow-nivel">🗝️ Zona privada</div>
+      <h2 class="display" style="font-size:1.5rem">Reiniciar la ruta</h2>
+      <p class="sub" style="font-size:1rem">Esto borra <b>todos</b> los jugadores y comentarios y deja la partida limpia para empezar de cero. No se puede deshacer.</p>
+      <div class="campo">
+        <label>Contraseña</label>
+        <input type="password" id="resetPass" placeholder="Introduce la clave" autocomplete="off" />
+      </div>
+      <button class="full infernal" id="btnReset">Borrar todo y empezar de cero</button>
+      <p id="resetMsg" class="hint center" style="margin-top:12px"></p>
+      <hr class="sep" />
+      <a class="btn ghost" href="/">← Volver al juego</a>
+    </div>
+  `;
+  const msg = $("#resetMsg");
+  $("#btnReset").addEventListener("click", async () => {
+    const clave = $("#resetPass").value.trim();
+    if (!clave) { msg.textContent = "Escribe la contraseña."; return; }
+    if (!confirm("¿Seguro? Esto borra a TODOS los jugadores y comentarios y no se puede deshacer.")) return;
+    const btn = $("#btnReset"); btn.disabled = true; msg.textContent = "Borrando…";
+    try {
+      const r = await api("reset", { clave });
+      if (r.ok) {
+        msg.textContent = "✓ Partida reiniciada. Ya podéis empezar de cero.";
+        // limpiar identidad local para que este dispositivo también arranque limpio
+        localStorage.removeItem("descenso_yo");
+        // (mantenemos el id del dispositivo; se re-registrará al entrar)
+      } else if (r.error === "clave") {
+        msg.textContent = "Contraseña incorrecta."; btn.disabled = false;
+      } else {
+        msg.textContent = "No se pudo reiniciar: " + (r.error || "error"); btn.disabled = false;
+      }
+    } catch (e) {
+      msg.textContent = "Error de conexión, inténtalo otra vez."; btn.disabled = false;
+    }
+  });
+}
+
 // ============================ ARRANQUE ============================
 (async function init() {
+  // Ruta oculta de reinicio: solo si la URL lleva ?reset o #reset
+  if (esRutaReset()) { renderReset(); return; }
+
   // Si ya estoy jugando (recarga), no repetir la animación de arranque
   await refrescar();
   if (estado && (estado.fase === "jugando" || estado.fase === "final") && yoJugador()) {
