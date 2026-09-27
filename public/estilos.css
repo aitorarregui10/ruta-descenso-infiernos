@@ -297,8 +297,8 @@ hr.sep { border:none; border-top:1px solid rgba(255,225,170,.2); margin: 18px 0;
 
 /* ---- 2) Transformación en Demonio ---- */
 .trans-foto { position: relative; margin: 4px 0 16px; }
-.trans-foto img { display: block; transition: filter .9s ease; }
-.trans-foto .trans-demonio { position: absolute; inset: 0; opacity: 0; transition: opacity .5s ease; }
+.trans-foto img { display: block; width: 100%; transition: filter .9s ease; }
+.trans-foto .trans-demonio { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .5s ease; }
 .trans-foto .trans-llama {
   position: absolute; left: 0; right: 0; bottom: 0; height: 0;
   background: linear-gradient(0deg, #ff6a00, #ffb300 60%, transparent);

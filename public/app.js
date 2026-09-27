@@ -140,6 +140,12 @@ function prefiereMenosMovimiento() {
   return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
+// Sube al principio de la página (al cambiar de pantalla/parada)
+function subirArriba() {
+  try { window.scrollTo({ top: 0, behavior: prefiereMenosMovimiento() ? "auto" : "smooth" }); }
+  catch { window.scrollTo(0, 0); }
+}
+
 // ============================ RENDER PRINCIPAL ============================
 function render() {
   aplicarAmbiente();
@@ -352,7 +358,7 @@ function animarPuertas(despues) {
   document.body.appendChild(cap);
   // forzar reflow y lanzar
   requestAnimationFrame(() => cap.classList.add("go"));
-  setTimeout(() => { despues(); }, 1500);      // renderiza la parada por debajo
+  setTimeout(() => { despues(); subirArriba(); }, 1500);      // renderiza la parada por debajo
   setTimeout(() => { cap.remove(); }, 2600);   // retira el overlay tras el fundido
 }
 
@@ -485,7 +491,7 @@ function mostrarDemonioFinal() {
     <p class="relato">La cumpleañera que subió al cielo ya no existe. Entre la lava y el humo, arde ahora el <b>Demonio Pelirrojo</b>, que os guiará hasta el fondo. A partir de aquí, ese es su nombre.</p>
     <button class="full infernal" id="btnSeguirTrans">Entrar en el Bar Maná ⬇️</button>
   `;
-  $("#btnSeguirTrans").addEventListener("click", render);
+  $("#btnSeguirTrans").addEventListener("click", () => { render(); subirArriba(); });
 }
 
 async function cerrarParada(data) {
@@ -493,7 +499,7 @@ async function cerrarParada(data) {
   const texto = ($("#comentarioCierre") && $("#comentarioCierre").value.trim()) || "";
   const emojiVoto = votoParada[data.n] || "";
   const r = await api("cerrar", { id: store.id, parada: data.n, emojiVoto, texto });
-  if (r.ok) { estado = r.estado; render(); }
+  if (r.ok) { estado = r.estado; render(); subirArriba(); }
   else { btn.disabled = false; btn.textContent = "Cerrar parada y bajar ⬇️"; }
 }
 
@@ -515,7 +521,7 @@ function renderEsperaFinal() {
       <button class="ghost" id="btnAbandonar">Me voy ya — abandonar la ruta</button>
     </div>
   `;
-  $("#btnVerFinal").addEventListener("click", () => { forzarFinal = true; render(); });
+  $("#btnVerFinal").addEventListener("click", () => { forzarFinal = true; render(); subirArriba(); });
   $("#btnAbandonar").addEventListener("click", abandonar);
   montarChat({ n: 99 });
 }
